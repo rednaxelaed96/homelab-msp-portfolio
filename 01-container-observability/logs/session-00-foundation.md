@@ -1,0 +1,4 @@
+- Created rg-homelab-msp in East US
+- Created vnet-homelab with a 10.0.0.0/16 address space and snet-lab with a a 10.0.0.0/24 space.
+- Created nsg-lab and associated snet-lab. Added a default DenyAllInBound rule at priority 1000 to ensure no traffic is hitting this nsg until we are ready.
+- Created an azure container registry (acrhomelabakd.azurecr.io) with default settings and on the basic plan to prepare to push images to. 

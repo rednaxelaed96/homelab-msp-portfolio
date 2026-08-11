@@ -1,0 +1,4 @@
+- Created the app pre-requisite files.
+    - Created a small python app that will get version and health information for testing purposes using FastAPI
+    - Created the requirements.txt needed for the Dockerfile.
+    - Created the dockerfile to be pushed to the ACR created in the previous session.
