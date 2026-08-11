@@ -100,13 +100,31 @@ def version():
     return {"version": "2.0.0", "timestamp": time.time()}
 ```
 
-Once saved, I will use my local terminal to build the v2 repo:
+Once saved, I will use my local terminal to enable multiple revisions and build the v2 repo:
 ```azurecli
+az containerapp revision set-mode \
+  --name lab-api \
+  --resource-group rg-homelab-msp \
+  --mode multiple
+
+az containerapp update \
+  --name lab-api \
+  --resource-group rg-homelab-msp \
+  --image acrhomelabakd.azurecr.io/lab-api:v2 \
+  --revision-suffix v2
+
 az acr build \
   --registry acrhomelabakd \
   --image lab-api:v2 \
   ./app
 ```
+
+After confirming both revisions are healthy and provisioned and that traffic was not cutover , I split the traffic between them 50/50 rather than the 0/100 and hit the version endpoint multiple times to ensure I saw both v1 and v2. Once I confirmed both, I put traffic fully to v2.
+
+![Multiple Revisions in Portal with all traffic still on v1](../images/multiple-revision-confirmation.png)
+
+![50/50 traffic split results](../images/5050-split-curl.png)
+
 ## Issues
 ### Step 3
 This initially failed due to there not being an applicable Log Analytics Workspace, and it being unable to create one due to the Microsoft.OperationalInsights resource provider not being registered on my subscription. I ran ```az provider register -n Microsoft.OperationalInsights --wait``` to resolve this issue.
