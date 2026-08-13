@@ -14,6 +14,8 @@ configure_azure_monitor(
 app = FastAPI()
 FastAPIInstrumentor.instrument_app(app)
 
+credential = ManagedIdentityCredential(client_id=os.environ["PG_IDENTITY_CLIENT_ID"])
+
 meter = metrics.get_meter("lab-api")
 token_duration_histogram = meter.create_histogram(
     "entra_token_acquisition_duration_ms",

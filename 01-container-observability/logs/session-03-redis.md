@@ -71,9 +71,29 @@ These results show that the connections succeeded, and show in milliseconds how 
 In most cases I would prefer to test setting up Azure Managed Grafana. However, Microsoft has retired the free/cheap "Essential" tier of this, and I only have the option for standard, which would be far too costly for a home lab setup. Due to this, I am going with the Microsoft recommended replacement of Azure Monitor Dashboards with Grafana. I will miss out on the experience of setting up a standalone instance of Grafana with this, but I will still get the benefits of being able to use the same dashboard engine, same query language, and the connection to my log analytics and insights data will be native.
 
 This is easy enough to setup and access.
+
 1. Go to your Application Insights resource, Monitoring, and go to Dashboards with Grafana.
 2. Select New and select New Dashboard.
 
 This will show us the Grafana editing interface and it will be automatically connected to my monitor data.
 I tried to set up a panel for availability, but this was showing me no data. To double check, I tried to run a simple request query against my app insights, but that came back empty as well.
 
+Looks like we need to make sure that FastAPI instrumentation starts rather than hoping. Updated the app with the following lines, rebuilt, and applied the new yaml.
+```python
+import os
+import time
+import psycopg2
+from fastapi import FastAPI
+from azure.identity import ManagedIdentityCredential
+from azure.monitor.opentelemetry import configure_azure_monitor
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry import metrics
+
+configure_azure_monitor(
+    connection_string=os.environ["APPLICATIONINSIGHTS_CONNECTION_STRING"]
+)
+
+app = FastAPI()
+FastAPIInstrumentor.instrument_app(app)
+```
+Once this was done, I ran a few more curl commands to generate traffic and checked the requests log again.
