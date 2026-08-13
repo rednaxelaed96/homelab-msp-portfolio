@@ -4,6 +4,7 @@ import psycopg2
 from fastapi import FastAPI
 from azure.identity import ManagedIdentityCredential
 from azure.monitor.opentelemetry import configure_azure_monitor
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry import metrics
 
 configure_azure_monitor(
@@ -11,7 +12,7 @@ configure_azure_monitor(
 )
 
 app = FastAPI()
-credential = ManagedIdentityCredential(client_id=os.environ["PG_IDENTITY_CLIENT_ID"])
+FastAPIInstrumentor.instrument_app(app)
 
 meter = metrics.get_meter("lab-api")
 token_duration_histogram = meter.create_histogram(
