@@ -3,3 +3,5 @@ uvicorn
 psycopg2-binary
 azure-identity
 azure-monitor-opentelemetry
+redis
+redis-entraid

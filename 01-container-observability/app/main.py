@@ -6,6 +6,8 @@ from azure.identity import ManagedIdentityCredential
 from azure.monitor.opentelemetry import configure_azure_monitor
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry import metrics
+from redis import Redis
+from redis_entraid.cred_provider import create_from_managed_identity, ManagedIdentityType, ManagedIdentityIdType
 
 configure_azure_monitor(
     connection_string=os.environ["APPLICATIONINSIGHTS_CONNECTION_STRING"]
@@ -21,6 +23,20 @@ token_duration_histogram = meter.create_histogram(
     "entra_token_acquisition_duration_ms",
     unit="ms",
     description="Time to acquire an Entra ID token for Postgres authentication",
+)
+
+redis_credential_provider = create_from_managed_identity(
+    identity_type=ManagedIdentityType.USER_ASSIGNED,
+    resource="https://redis.azure.com/",
+    id_type=ManagedIdentityIdType.CLIENT_ID,
+    id_value=os.environ["REDIS_IDENTITY_CLIENT_ID"],
+)
+
+redis_client = Redis(
+    host=os.environ["REDIS_HOST"],
+    port=10000,
+    ssl=True,
+    credential_provider=redis_credential_provider,
 )
 
 def get_connection():
@@ -82,3 +98,35 @@ def list_notes():
     cur.close()
     conn.close()
     return [{"id": r[0], "content": r[1], "created_at": r[2].isoformat()} for r in rows]
+
+CACHE_TTL_SECONDS = 30
+
+@app.get("/notes")
+def list_notes():
+    cached = redis_client.get("notes:latest")
+    if cached:
+        return json.loads(cached)
+
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, content, created_at FROM notes ORDER BY id DESC LIMIT 20;")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    result = [{"id": r[0], "content": r[1], "created_at": r[2].isoformat()} for r in rows]
+    redis_client.setex("notes:latest", CACHE_TTL_SECONDS, json.dumps(result))
+    return result
+
+@app.post("/notes")
+def create_note(content: str):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO notes (content) VALUES (%s) RETURNING id;", (content,))
+    note_id = cur.fetchone()[0]
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    redis_client.delete("notes:latest")
+    return {"id": note_id, "content": content}
