@@ -7,6 +7,7 @@ on:
       - '01-container-observability/app/**'
       - '01-container-observability/pgbouncer/**'
       - '01-container-observability/infra/**'
+  workflow_dispatch:
 
 permissions:
   id-token: write
