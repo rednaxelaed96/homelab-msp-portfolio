@@ -7,6 +7,8 @@ param dbHost string
 param redisHost string
 @secure()
 param appInsightsConnectionString string
+param labApiImageTag string = 'v13'
+param pgbouncerImageTag string = 'v5'
 
 resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: resourceGroupName
@@ -52,6 +54,8 @@ module containerapp 'modules/containerapp.bicep' = {
     dbHost: dbHost
     redisHost: redisHost
     appInsightsConnectionString: appInsightsConnectionString
+    labApiImageTag: labApiImageTag
+    pgbouncerImageTag: pgbouncerImageTag
   }
 }
 
