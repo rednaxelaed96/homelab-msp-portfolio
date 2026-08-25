@@ -55,6 +55,12 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-11-01' = {
           ]
         }
       }
+      {
+        name: 'amr-snet'
+        properties: {
+          addressPrefix: '10.0.2.0/24'
+        }
+      }
     ]
   }
 }
