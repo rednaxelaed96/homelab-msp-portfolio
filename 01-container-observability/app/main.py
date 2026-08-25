@@ -1,5 +1,6 @@
 import os
 import time
+import json
 import psycopg2
 from fastapi import FastAPI
 from azure.identity import ManagedIdentityCredential
@@ -83,27 +84,6 @@ def init_db():
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
-@app.post("/notes")
-def create_note(content: str):
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("INSERT INTO notes (content) VALUES (%s) RETURNING id;", (content,))
-    note_id = cur.fetchone()[0]
-    conn.commit()
-    cur.close()
-    conn.close()
-    return {"id": note_id, "content": content}
-
-@app.get("/notes")
-def list_notes():
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT id, content, created_at FROM notes ORDER BY id DESC LIMIT 20;")
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    return [{"id": r[0], "content": r[1], "created_at": r[2].isoformat()} for r in rows]
 
 CACHE_TTL_SECONDS = 30
 
