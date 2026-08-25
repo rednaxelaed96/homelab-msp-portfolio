@@ -3,6 +3,10 @@ targetScope = 'subscription'
 param resourceGroupName string = 'rg-homelab-msp'
 param location string = 'eastus'
 param acrName string = 'acrhomelabakd'
+param dbHost string
+param redisHost string
+@secure()
+param appInsightsConnectionString string
 
 resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: resourceGroupName
@@ -27,10 +31,27 @@ module identities 'modules/identities.bicep' = {
 }
 
 module containerapps 'modules/containerapps-env.bicep' = {
-  name: 'containerapps-deployment'
+  name: 'containerapps-env-deployment'
   scope: rg
   params: {
     subnetId: foundation.outputs.subnetId
+  }
+}
+
+module containerapp 'modules/containerapp.bicep' = {
+  name: 'containerapp-deployment'
+  scope: rg
+  params: {
+    environmentId: containerapps.outputs.environmentId
+    acrLoginServer: foundation.outputs.acrLoginServer
+    acrPullIdentityId: identities.outputs.acrPullIdentityId
+    postgresAuthIdentityId: identities.outputs.postgresAuthIdentityId
+    redisAuthIdentityId: identities.outputs.redisAuthIdentityId
+    postgresAuthIdentityClientId: identities.outputs.postgresAuthIdentityClientId
+    redisAuthIdentityClientId: identities.outputs.redisAuthIdentityClientId
+    dbHost: dbHost
+    redisHost: redisHost
+    appInsightsConnectionString: appInsightsConnectionString
   }
 }
 
@@ -39,3 +60,4 @@ output postgresAuthIdentityClientId string = identities.outputs.postgresAuthIden
 output redisAuthIdentityClientId string = identities.outputs.redisAuthIdentityClientId
 output containerAppsEnvironmentId string = containerapps.outputs.environmentId
 output logAnalyticsWorkspaceId string = containerapps.outputs.logAnalyticsWorkspaceId
+output containerAppFqdn string = containerapp.outputs.containerAppFqdn
