@@ -25,6 +25,12 @@ token_duration_histogram = meter.create_histogram(
     description="Time to acquire an Entra ID token for Postgres authentication",
 )
 
+notes_duration_histogram = meter.create_histogram(
+    "notes_fetch_duration_ms",
+    unit="ms",
+    description="Time to serve GET /notes, tagged by cache hit or miss",
+)
+
 redis_credential_provider = create_from_managed_identity(
     identity_type=ManagedIdentityType.USER_ASSIGNED,
     resource="https://redis.azure.com/",
@@ -103,8 +109,11 @@ CACHE_TTL_SECONDS = 30
 
 @app.get("/notes")
 def list_notes():
+    start = time.monotonic()
     cached = redis_client.get("notes:latest")
     if cached:
+        duration_ms = (time.monotonic() - start) * 1000
+        notes_duration_histogram.record(duration_ms, {"cache_hit": "true"})
         return json.loads(cached)
 
     conn = get_connection()
@@ -116,6 +125,9 @@ def list_notes():
 
     result = [{"id": r[0], "content": r[1], "created_at": r[2].isoformat()} for r in rows]
     redis_client.setex("notes:latest", CACHE_TTL_SECONDS, json.dumps(result))
+
+    duration_ms = (time.monotonic() - start) * 1000
+    notes_duration_histogram.record(duration_ms, {"cache_hit": "false"})
     return result
 
 @app.post("/notes")
