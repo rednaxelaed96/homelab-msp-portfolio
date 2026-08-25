@@ -1,0 +1,59 @@
+name: Build, Push, and Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '01-container-observability/app/**'
+      - '01-container-observability/pgbouncer/**'
+      - '01-container-observability/infra/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push lab-api
+        run: |
+          az acr build --registry acrhomelabakd --image lab-api:${{ github.sha }} 01-container-observability/app
+
+      - name: Build and push pgbouncer sidecar
+        run: |
+          az acr build --registry acrhomelabakd --image pgbouncer-sidecar:${{ github.sha }} 01-container-observability/pgbouncer
+
+  deploy-infra:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: What-if preview
+        run: |
+          az deployment sub what-if \
+            --location eastus \
+            --template-file 01-container-observability/infra/main.bicep \
+            --parameters resourceGroupName=rg-homelab-msp acrName=acrhomelabakd \
+              dbHost=db-psqlflex-homelab.postgres.database.azure.com \
+              redisHost=${{ secrets.REDIS_HOST }} \
+              appInsightsConnectionString=${{ secrets.APPINSIGHTS_CONNECTION_STRING }} \
+              labApiImageTag=${{ github.sha }} \
+              pgbouncerImageTag=${{ github.sha }}
