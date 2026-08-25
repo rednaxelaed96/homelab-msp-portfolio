@@ -49,10 +49,10 @@ jobs:
 
       - name: What-if preview
         run: |
-          az deployment sub what-if \
-            --location eastus \
-            --template-file 01-container-observability/infra/main.bicep \
-            --parameters resourceGroupName=rg-homelab-msp acrName=acrhomelabakd \
+          az deployment group what-if \
+            --resource-group rg-homelab-msp \
+            --template-file 01-container-observability/infra/main-deploy.bicep \
+            --parameters acrName=acrhomelabakd \
               dbHost=db-psqlflex-homelab.postgres.database.azure.com \
               redisHost=${{ secrets.REDIS_HOST }} \
               appInsightsConnectionString=${{ secrets.APPINSIGHTS_CONNECTION_STRING }} \
