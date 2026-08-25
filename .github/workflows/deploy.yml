@@ -37,6 +37,7 @@ jobs:
   deploy-infra:
     needs: build-and-push
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - uses: actions/checkout@v4
 
@@ -50,6 +51,18 @@ jobs:
       - name: What-if preview
         run: |
           az deployment group what-if \
+            --resource-group rg-homelab-msp \
+            --template-file 01-container-observability/infra/main-deploy.bicep \
+            --parameters acrName=acrhomelabakd \
+              dbHost=db-psqlflex-homelab.postgres.database.azure.com \
+              redisHost=${{ secrets.REDIS_HOST }} \
+              appInsightsConnectionString=${{ secrets.APPINSIGHTS_CONNECTION_STRING }} \
+              labApiImageTag=${{ github.sha }} \
+              pgbouncerImageTag=${{ github.sha }}
+
+      - name: Deploy
+        run: |
+          az deployment group create \
             --resource-group rg-homelab-msp \
             --template-file 01-container-observability/infra/main-deploy.bicep \
             --parameters acrName=acrhomelabakd \
